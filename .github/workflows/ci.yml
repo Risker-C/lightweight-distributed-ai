@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        cd src/lightweight-root
+        pip install -r requirements.txt
+    
+    - name: Check Python syntax
+      run: |
+        cd src/lightweight-root
+        python3 -m py_compile *.py
+        python3 -m py_compile backends/*.py
+    
+    - name: Test imports
+      run: |
+        cd src/lightweight-root
+        python3 -c "from api import create_app; print('API import OK')"
+        python3 -c "from db import Database; print('DB import OK')"
+        python3 -c "from scheduler import Scheduler; print('Scheduler import OK')"
+    
+    - name: Test database initialization
+      run: |
+        cd src/lightweight-root
+        python3 -c "from db import Database; db = Database(); print('Database initialized')"
+    
+    - name: Check documentation
+      run: |
+        test -f README.md
+        test -f CONTRIBUTING.md
+        test -f LICENSE
+        test -f CHANGELOG.md
