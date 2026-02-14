@@ -1,0 +1,44 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+  request_timeout_ms: 15000
+
+tls:
+  enabled: false
+  cert_file: ./certs/server.crt
+  key_file: ./certs/server.key
+
+auth:
+  bearer_tokens: dev-token-123
+  allow_unauthenticated: false
+
+retry:
+  attempts: 3
+  base_delay_ms: 200
+  max_delay_ms: 2000
+
+logging:
+  level: info
+  file: ""
+
+providers:
+  nomad:
+    enabled: true
+    endpoint: http://nomad:4646
+    token: ""
+    namespace: default
+
+  github_actions:
+    enabled: false
+    api_base: https://api.github.com
+    owner: your-org
+    repo: your-repo
+    token: ""
+
+  cloud_run:
+    enabled: false
+    api_base: https://run.googleapis.com
+    project: your-gcp-project
+    region: asia-east1
+    token: ""
+    job: your-cloud-run-job

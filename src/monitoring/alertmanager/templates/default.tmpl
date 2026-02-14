@@ -1,0 +1,18 @@
+{{ define "alert.subject" }}
+[{{ .Status | toUpper }}][{{ .CommonLabels.severity | toUpper }}] {{ .CommonLabels.alertname }}
+{{ end }}
+
+{{ define "alert.body" }}
+状态: {{ .Status }}
+告警数: {{ len .Alerts }}
+
+{{ range .Alerts }}
+- 告警: {{ .Labels.alertname }}
+  服务: {{ .Labels.service }}
+  实例: {{ .Labels.instance }}
+  级别: {{ .Labels.severity }}
+  摘要: {{ .Annotations.summary }}
+  详情: {{ .Annotations.description }}
+  开始时间: {{ .StartsAt }}
+{{ end }}
+{{ end }}

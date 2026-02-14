@@ -1,0 +1,13 @@
+datasources:
+  postgres:
+    url: jdbc:postgresql://postgres:5432/kestra
+    driverClassName: org.postgresql.Driver
+    username: kestra
+    password: kestra
+
+flyway:
+  datasources:
+    postgres:
+      enabled: true
+      locations:
+        - classpath:migrations/postgres

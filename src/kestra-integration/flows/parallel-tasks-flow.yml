@@ -1,0 +1,56 @@
+id: parallel-tasks-flow
+namespace: company.team.nomad
+description: |
+  并行任务流：并发触发多个 Nomad Job，验证并行调度能力。
+
+inputs:
+  - id: nomad_addr
+    type: STRING
+    defaults: "http://nomad:4646"
+
+tasks:
+  - id: run_parallel_nomad_jobs
+    type: io.kestra.plugin.core.flow.Parallel
+    tasks:
+      - id: job_alpha
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        inputs:
+          job_name: "parallel-alpha"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT15S
+          maxAttempt: 2
+
+      - id: job_beta
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        inputs:
+          job_name: "parallel-beta"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT15S
+          maxAttempt: 2
+
+      - id: job_gamma
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        inputs:
+          job_name: "parallel-gamma"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT15S
+          maxAttempt: 2
+
+  - id: parallel_done
+    type: io.kestra.plugin.core.log.Log
+    message: "All parallel Nomad jobs are completed."

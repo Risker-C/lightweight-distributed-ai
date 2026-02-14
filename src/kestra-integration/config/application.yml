@@ -1,0 +1,38 @@
+kestra:
+  server:
+    basicAuth:
+      enabled: false
+
+  repository:
+    type: postgres
+
+  queue:
+    type: postgres
+
+  storage:
+    type: local
+    local:
+      basePath: /app/storage
+
+  url: http://localhost:8080/
+
+  anonymousUsageReport:
+    enabled: false
+
+  tasks:
+    tmpDir:
+      path: /tmp/kestra-wd/tmp
+
+  namespaceFiles:
+    enabled: true
+    local:
+      basePath: /app/flows
+
+micronaut:
+  server:
+    port: 8080
+
+logger:
+  levels:
+    io.kestra: INFO
+    org.apache.http: WARN

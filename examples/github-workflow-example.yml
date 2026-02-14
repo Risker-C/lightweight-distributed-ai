@@ -1,0 +1,44 @@
+name: AI Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag'
+        required: true
+        default: 'latest'
+      env_vars:
+        description: 'Environment variables (JSON)'
+        required: false
+        default: '{}'
+
+jobs:
+  run-task:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run task
+        env:
+          ENV_VARS: ${{ github.event.inputs.env_vars }}
+        run: |
+          echo "Running task with image tag: ${{ github.event.inputs.image_tag }}"
+          echo "Environment variables: $ENV_VARS"
+          python worker.py
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: results-${{ github.event.inputs.image_tag }}
+          path: results/

@@ -1,0 +1,94 @@
+id: dag-workflow
+namespace: company.team.nomad
+description: |
+  DAG 依赖流：演示有向无环图编排。
+  A(prep) -> B(feature) -> C(train)
+  A(prep) -> D(quality-check)
+  C + D -> E(package)
+
+inputs:
+  - id: nomad_addr
+    type: STRING
+    defaults: "http://nomad:4646"
+
+tasks:
+  - id: nomad_dag
+    type: io.kestra.plugin.core.flow.Dag
+    tasks:
+      - id: prep_stage
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        inputs:
+          job_name: "dag-prep"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT10S
+          maxAttempt: 2
+
+      - id: feature_stage
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        dependsOn:
+          - prep_stage
+        inputs:
+          job_name: "dag-feature"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT10S
+          maxAttempt: 2
+
+      - id: quality_stage
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        dependsOn:
+          - prep_stage
+        inputs:
+          job_name: "dag-quality"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT10S
+          maxAttempt: 2
+
+      - id: train_stage
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        dependsOn:
+          - feature_stage
+        inputs:
+          job_name: "dag-train"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT10S
+          maxAttempt: 2
+
+      - id: package_stage
+        type: io.kestra.plugin.core.flow.Subflow
+        namespace: company.team.nomad
+        flowId: nomad-job-flow
+        wait: true
+        dependsOn:
+          - train_stage
+          - quality_stage
+        inputs:
+          job_name: "dag-package"
+          nomad_addr: "{{ inputs.nomad_addr }}"
+        retry:
+          type: constant
+          interval: PT10S
+          maxAttempt: 2
+
+  - id: dag_done
+    type: io.kestra.plugin.core.log.Log
+    message: "DAG workflow completed successfully."

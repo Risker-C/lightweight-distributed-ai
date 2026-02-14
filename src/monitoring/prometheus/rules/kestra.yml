@@ -1,0 +1,59 @@
+groups:
+  - name: kestra-alerts
+    interval: 30s
+    rules:
+      - record: kestra:workflow_failure_rate_15m
+        expr: |
+          (
+            (sum(rate(kestra_execution_total{state=~"FAILED|ERROR|KILLED"}[15m])) or vector(0))
+            /
+            clamp_min(sum(rate(kestra_execution_total[15m])) or vector(0), 0.01)
+          )
+
+      - record: kestra:workflow_success_rate_15m
+        expr: |
+          (
+            (sum(rate(kestra_execution_total{state="SUCCESS"}[15m])) or vector(0))
+            /
+            clamp_min(sum(rate(kestra_execution_total[15m])) or vector(0), 0.01)
+          )
+
+      - alert: KestraDown
+        expr: up{job="kestra"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "Kestra不可用"
+          description: "Kestra指标抓取失败，请检查Kestra服务状态。"
+
+      - alert: KestraWorkflowFailureRateHigh
+        expr: kestra:workflow_failure_rate_15m > 0.10
+        for: 15m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "Kestra工作流失败率过高"
+          description: "15分钟窗口工作流失败率超过10%。"
+
+      - alert: KestraWorkflowSuccessRateLow
+        expr: kestra:workflow_success_rate_15m < 0.85
+        for: 15m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "Kestra工作流成功率偏低"
+          description: "15分钟窗口工作流成功率低于85%。"
+
+      - alert: KestraQueueBacklogHigh
+        expr: (sum(kestra_queue_size) or sum(kestra_executor_queued_tasks) or vector(0)) > 200
+        for: 10m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "Kestra队列积压严重"
+          description: "执行队列积压超过200，请检查Worker容量。"

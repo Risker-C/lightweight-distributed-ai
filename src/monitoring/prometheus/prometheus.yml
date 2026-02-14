@@ -1,0 +1,72 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    env: production
+    stack: nomad-kestra-gateway
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
+        labels:
+          service: prometheus
+
+  - job_name: alertmanager
+    static_configs:
+      - targets:
+          - alertmanager:9093
+        labels:
+          service: alertmanager
+
+  - job_name: node-exporter
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/nodes.yml
+        refresh_interval: 30s
+
+  - job_name: cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080
+        labels:
+          service: cadvisor
+
+  - job_name: nomad
+    metrics_path: /v1/metrics
+    params:
+      format: [prometheus]
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/nomad.yml
+        refresh_interval: 30s
+
+  - job_name: nomad-exporter
+    static_configs:
+      - targets:
+          - nomad-exporter:9172
+        labels:
+          service: nomad-exporter
+
+  - job_name: gateway
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/gateway.yml
+        refresh_interval: 30s
+
+  - job_name: kestra
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/kestra.yml
+        refresh_interval: 30s

@@ -1,0 +1,19 @@
+{
+  "oracle_cloud": {
+    "compartment_id": "ocid1.compartment.oc1..example",
+    "ocir_repository": "namespace/repo",
+    "subnet_id": "ocid1.subnet.oc1..example",
+    "region": "us-ashburn-1",
+    "shape": "CI.Standard.E4.Flex"
+  },
+  "github_actions": {
+    "repository": "username/repo",
+    "workflow": "worker.yml",
+    "token": "ghp_example_token",
+    "ref": "main"
+  },
+  "cloud_run": {
+    "project": "your-project-id",
+    "region": "us-central1"
+  }
+}

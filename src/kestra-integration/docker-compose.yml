@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: kestra-postgres
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: kestra
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kestra -d kestra"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - orchestration
+
+  nomad:
+    image: hashicorp/nomad:1.8
+    container_name: nomad-dev
+    command: agent -dev -bind 0.0.0.0 -log-level INFO
+    environment:
+      NOMAD_ADDR: http://0.0.0.0:4646
+    ports:
+      - "4646:4646"
+      - "4647:4647"
+      - "4648:4648"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - orchestration
+
+  kestra:
+    image: kestra/kestra:latest
+    container_name: kestra
+    command: server standalone --config /app/config/application.yml
+    user: "root"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nomad:
+        condition: service_started
+    environment:
+      KESTRA_CONFIGURATION_PATH: /app/config/application.yml
+      MICRONAUT_CONFIG_FILES: /app/config/database.yml
+      JAVA_OPTS: -Xms512m -Xmx1024m
+    volumes:
+      - ./config:/app/config
+      - ./flows:/app/flows
+      - ./plugins:/app/plugins
+      - ./scripts:/app/scripts
+      - kestra-storage:/app/storage
+    networks:
+      - orchestration
+
+networks:
+  orchestration:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  kestra-storage:

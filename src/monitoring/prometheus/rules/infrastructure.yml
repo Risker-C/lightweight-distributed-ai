@@ -1,0 +1,53 @@
+groups:
+  - name: infrastructure-alerts
+    interval: 30s
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "实例不可用: {{ $labels.job }} / {{ $labels.instance }}"
+          description: "目标实例已连续5分钟无法抓取。"
+
+      - alert: HostHighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "CPU使用率过高: {{ $labels.instance }}"
+          description: "主机CPU使用率超过85%并持续10分钟。"
+
+      - alert: HostHighMemoryUsage
+        expr: ((1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "内存使用率过高: {{ $labels.instance }}"
+          description: "主机内存使用率超过90%并持续10分钟。"
+
+      - alert: HostDiskSpaceLow
+        expr: ((node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100) < 15
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "磁盘空间不足: {{ $labels.instance }} {{ $labels.mountpoint }}"
+          description: "磁盘剩余空间低于15%。"
+
+      - alert: PrometheusTargetFlapping
+        expr: changes(up[10m]) > 4
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "抓取目标状态抖动: {{ $labels.job }} / {{ $labels.instance }}"
+          description: "目标在10分钟内频繁上下线，请检查网络或服务稳定性。"

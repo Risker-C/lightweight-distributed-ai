@@ -1,0 +1,39 @@
+# Build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+/tmp/
+
+# Configuration files with secrets
+config.json
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+data/
+results/

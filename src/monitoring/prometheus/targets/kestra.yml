@@ -1,0 +1,7 @@
+- targets:
+    - host.docker.internal:8081
+  labels:
+    service: kestra
+    env: production
+    # 常见指标路径：/metrics 或 /api/v1/metrics/prometheus
+    # __metrics_path__: /api/v1/metrics/prometheus

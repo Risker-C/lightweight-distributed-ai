@@ -1,0 +1,17 @@
+[Unit]
+Description=Lightweight Root Node for Distributed AI Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.openclaw/workspace/distributed-ai-assistant-project/src/lightweight-root
+Environment="PATH=/usr/bin:/usr/local/bin"
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

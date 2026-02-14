@@ -1,0 +1,16 @@
+# Nomad Exporter 参数建议
+exporter:
+  image: quay.io/prometheus/nomad-exporter:v0.0.5
+  listen_address: ":9172"
+  nomad_address: "http://host.docker.internal:4646"
+  region: "global"
+  namespace: "*"
+
+# Nomad 服务端 telemetry 建议配置（写入 nomad.hcl）
+nomad_telemetry:
+  telemetry {
+    prometheus_metrics         = true
+    disable_hostname           = true
+    publish_allocation_metrics = true
+    publish_node_metrics       = true
+  }

@@ -1,0 +1,115 @@
+id: nomad-job-flow
+namespace: company.team.nomad
+description: |
+  基础 Nomad 任务流：
+  1) 提交 Nomad Job
+  2) 轮询任务状态
+  3) 获取结果摘要
+
+inputs:
+  - id: job_name
+    type: STRING
+    defaults: "nomad-batch-demo"
+  - id: nomad_addr
+    type: STRING
+    defaults: "http://nomad:4646"
+  - id: datacenter
+    type: STRING
+    defaults: "dc1"
+
+tasks:
+  - id: submit_nomad_job
+    type: io.kestra.plugin.core.http.Request
+    uri: "{{ inputs.nomad_addr }}/v1/jobs"
+    method: POST
+    contentType: application/json
+    body: |
+      {
+        "Job": {
+          "ID": "{{ inputs.job_name }}",
+          "Name": "{{ inputs.job_name }}",
+          "Type": "batch",
+          "Datacenters": ["{{ inputs.datacenter }}"],
+          "TaskGroups": [
+            {
+              "Name": "main",
+              "Count": 1,
+              "Tasks": [
+                {
+                  "Name": "echo-task",
+                  "Driver": "raw_exec",
+                  "Config": {
+                    "command": "/bin/sh",
+                    "args": [
+                      "-c",
+                      "echo Kestra+Nomad integrated run for {{ inputs.job_name }}; sleep 5; echo done"
+                    ]
+                  },
+                  "Resources": {
+                    "CPU": 100,
+                    "MemoryMB": 128
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    retry:
+      type: constant
+      interval: PT10S
+      maxAttempt: 3
+
+  - id: monitor_nomad_job
+    type: io.kestra.plugin.scripts.shell.Commands
+    warningOnStdErr: false
+    commands:
+      - |
+        set -eu
+        NOMAD_ADDR="{{ inputs.nomad_addr }}"
+        JOB_ID="{{ inputs.job_name }}"
+        MAX_TRIES=30
+        SLEEP_SECONDS=5
+
+        echo "Start monitoring Nomad job: ${JOB_ID}"
+
+        i=1
+        while [ "$i" -le "$MAX_TRIES" ]; do
+          echo "[${i}/${MAX_TRIES}] Checking allocations..."
+          ALLOCS="$(curl -fsS "${NOMAD_ADDR}/v1/job/${JOB_ID}/allocations")"
+
+          if echo "$ALLOCS" | grep -q '"ClientStatus":"failed"'; then
+            echo "Detected failed allocation"
+            echo "$ALLOCS"
+            exit 1
+          fi
+
+          if echo "$ALLOCS" | grep -Eq '"ClientStatus":"(running|complete)"'; then
+            echo "Job ${JOB_ID} is running or completed"
+            echo "$ALLOCS"
+            exit 0
+          fi
+
+          sleep "$SLEEP_SECONDS"
+          i=$((i + 1))
+        done
+
+        echo "Timeout waiting for job ${JOB_ID} to reach running/complete state"
+        exit 1
+    retry:
+      type: constant
+      interval: PT20S
+      maxAttempt: 2
+
+  - id: fetch_job_summary
+    type: io.kestra.plugin.core.http.Request
+    uri: "{{ inputs.nomad_addr }}/v1/job/{{ inputs.job_name }}/summary"
+    method: GET
+    retry:
+      type: constant
+      interval: PT5S
+      maxAttempt: 3
+
+  - id: log_summary
+    type: io.kestra.plugin.core.log.Log
+    message: "Nomad summary for {{ inputs.job_name }} => {{ outputs.fetch_job_summary.body }}"

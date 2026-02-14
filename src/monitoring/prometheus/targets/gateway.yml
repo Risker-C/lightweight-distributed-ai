@@ -1,0 +1,7 @@
+- targets:
+    - host.docker.internal:8080
+  labels:
+    service: gateway
+    env: production
+    # 如果Gateway暴露的是Spring Boot指标，请改为：
+    # __metrics_path__: /actuator/prometheus

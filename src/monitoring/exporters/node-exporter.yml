@@ -1,0 +1,19 @@
+# Node Exporter 参数建议
+node_exporter:
+  image: prom/node-exporter:v1.8.2
+  listen_address: ":9100"
+  collectors:
+    - cpu
+    - meminfo
+    - filesystem
+    - loadavg
+    - netdev
+    - systemd
+    - processes
+  path_rootfs: "/host"
+  filesystem_mount_points_exclude: "^/(sys|proc|dev|host|etc)($|/)"
+
+# 可选：文本文件指标目录（自定义业务指标）
+textfile_collector:
+  enabled: false
+  directory: "/var/lib/node_exporter/textfile_collector"

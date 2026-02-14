@@ -1,0 +1,6 @@
+- targets:
+    - host.docker.internal:4646
+  labels:
+    service: nomad
+    cluster: nomad-prod
+    env: production

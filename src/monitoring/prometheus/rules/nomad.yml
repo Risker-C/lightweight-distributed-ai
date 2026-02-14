@@ -1,0 +1,62 @@
+groups:
+  - name: nomad-alerts
+    interval: 30s
+    rules:
+      - record: nomad:alloc_failed_rate_5m
+        expr: |
+          sum(rate(nomad_nomad_client_allocs_failed[5m]))
+          or
+          sum(rate(nomad_client_allocs_failed[5m]))
+
+      - record: nomad:task_success_rate_15m
+        expr: |
+          (
+            (sum(rate(nomad_nomad_client_allocs_complete[15m])) or sum(rate(nomad_client_allocs_complete[15m])) or vector(0))
+            /
+            clamp_min(
+              (sum(rate(nomad_nomad_client_allocs_complete[15m])) or sum(rate(nomad_client_allocs_complete[15m])) or vector(0))
+              +
+              (sum(rate(nomad_nomad_client_allocs_failed[15m])) or sum(rate(nomad_client_allocs_failed[15m])) or vector(0)),
+              0.01
+            )
+          )
+
+      - alert: NomadLeaderMissing
+        expr: (sum(nomad_nomad_raft_leader) or vector(0)) < 1
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Nomad未检测到Leader"
+          description: "Nomad Raft集群没有Leader，调度可能不可用。"
+
+      - alert: NomadBlockedEvaluationsHigh
+        expr: (sum(nomad_nomad_blocked_evals) or vector(0)) > 100
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Nomad阻塞评估过高"
+          description: "Nomad blocked evals 超过100，可能存在资源不足或调度瓶颈。"
+
+      - alert: NomadAllocationFailuresHigh
+        expr: nomad:alloc_failed_rate_5m > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Nomad任务分配失败率高"
+          description: "5分钟窗口内分配失败速率异常升高。"
+
+      - alert: NomadTaskSuccessRateLow
+        expr: nomad:task_success_rate_15m < 0.90
+        for: 15m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Nomad任务成功率低"
+          description: "15分钟窗口任务成功率低于90%。"
