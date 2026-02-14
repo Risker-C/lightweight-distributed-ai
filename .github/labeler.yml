@@ -1,0 +1,19 @@
+# Labeler configuration
+# Automatically label PRs based on changed files
+
+documentation:
+  - '**/*.md'
+  - 'docs/**/*'
+
+backend:
+  - 'src/lightweight-root/backends/**/*'
+
+core:
+  - 'src/lightweight-root/*.py'
+
+deployment:
+  - 'deployment/**/*'
+  - '.github/**/*'
+
+examples:
+  - 'examples/**/*'
