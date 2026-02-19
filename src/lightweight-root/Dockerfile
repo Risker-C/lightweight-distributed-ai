@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install Flask only
-RUN pip install --no-cache-dir flask==3.0.0
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only the app file
-COPY app.py .
+# Copy all application files
+COPY *.py .
 
 # Environment
 ENV PORT=8080
