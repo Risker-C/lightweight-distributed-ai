@@ -9,6 +9,26 @@ def create_app():
     app = Flask(__name__)
     db = Database()
     
+    @app.route('/')
+    def index():
+        """Root endpoint"""
+        return jsonify({
+            'service': 'lightweight-ai-worker',
+            'status': 'running',
+            'version': '1.0.0'
+        })
+    
+    @app.route('/health')
+    def health():
+        """Health check endpoint"""
+        import psutil
+        import os
+        return jsonify({
+            'status': 'healthy',
+            'memory_mb': round(psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024, 1),
+            'uptime_seconds': int(psutil.Process(os.getpid()).create_time())
+        })
+    
     @app.route('/jobs', methods=['POST'])
     def create_job():
         """Create a new job"""
