@@ -13,9 +13,10 @@ import subprocess
 import tempfile
 from datetime import datetime
 from monitoring import Monitor, Logger
+from version import VERSION
 
 print("=" * 50, file=sys.stderr)
-print("Starting Lightweight AI Worker v2.2 - Code Execution", file=sys.stderr)
+print(f"Starting Lightweight AI Worker v{VERSION} - Code Execution", file=sys.stderr)
 print("=" * 50, file=sys.stderr)
 
 app = Flask(__name__)
