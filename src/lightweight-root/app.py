@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Flask app with task scheduling, distributed computing, and monitoring
+Enhanced Flask app with code execution capabilities
 """
 from flask import Flask, jsonify, request
 import os
@@ -9,11 +9,13 @@ import time
 import threading
 import queue
 import uuid
+import subprocess
+import tempfile
 from datetime import datetime
 from monitoring import Monitor, Logger
 
 print("=" * 50, file=sys.stderr)
-print("Starting Lightweight AI Worker v2.0", file=sys.stderr)
+print("Starting Lightweight AI Worker v2.1 - Code Execution", file=sys.stderr)
 print("=" * 50, file=sys.stderr)
 
 app = Flask(__name__)
@@ -24,7 +26,7 @@ logger = Logger('worker')
 
 # Task queue and storage
 task_queue = queue.Queue()
-tasks = {}  # {task_id: {status, result, created_at, ...}}
+tasks = {}
 task_lock = threading.Lock()
 
 # Worker stats
@@ -35,19 +37,105 @@ stats = {
     'tasks_pending': 0
 }
 
-def metrics_collector():
-    """Collect metrics periodically"""
-    while True:
-        time.sleep(10)  # Collect every 10 seconds
-        monitor.collect_metrics()
+def execute_code(language, code, input_data=None):
+    """Execute code in specified language"""
+    try:
+        if language == 'python':
+            return execute_python(code, input_data)
+        elif language == 'javascript' or language == 'node':
+            return execute_javascript(code, input_data)
+        elif language == 'bash' or language == 'shell':
+            return execute_bash(code, input_data)
+        else:
+            return {'error': f'Unsupported language: {language}'}
+    except Exception as e:
+        return {'error': str(e)}
 
-# Start metrics collector
-metrics_thread = threading.Thread(target=metrics_collector, daemon=True)
-metrics_thread.start()
+def execute_python(code, input_data=None):
+    """Execute Python code"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(code)
+        temp_file = f.name
+    
+    try:
+        env = os.environ.copy()
+        if input_data:
+            env['INPUT_DATA'] = str(input_data)
+        
+        result = subprocess.run(
+            ['python3', temp_file],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env
+        )
+        
+        return {
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'returncode': result.returncode,
+            'success': result.returncode == 0
+        }
+    finally:
+        os.unlink(temp_file)
+
+def execute_javascript(code, input_data=None):
+    """Execute JavaScript code"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        if input_data:
+            f.write(f"const INPUT_DATA = {input_data};\n")
+        f.write(code)
+        temp_file = f.name
+    
+    try:
+        result = subprocess.run(
+            ['node', temp_file],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        return {
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'returncode': result.returncode,
+            'success': result.returncode == 0
+        }
+    except FileNotFoundError:
+        return {'error': 'Node.js not installed'}
+    finally:
+        os.unlink(temp_file)
+
+def execute_bash(code, input_data=None):
+    """Execute Bash script"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
+        f.write('#!/bin/bash\n')
+        if input_data:
+            f.write(f'INPUT_DATA="{input_data}"\n')
+        f.write(code)
+        temp_file = f.name
+    
+    try:
+        os.chmod(temp_file, 0o755)
+        result = subprocess.run(
+            ['/bin/bash', temp_file],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        return {
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'returncode': result.returncode,
+            'success': result.returncode == 0
+        }
+    finally:
+        os.unlink(temp_file)
 
 def task_worker():
     """Background worker to process tasks"""
-    print("Task worker started", file=sys.stderr)
+    logger.info("Task worker started")
     while True:
         try:
             task_id = task_queue.get(timeout=1)
@@ -57,12 +145,11 @@ def task_worker():
                 tasks[task_id]['status'] = 'processing'
                 tasks[task_id]['started_at'] = datetime.utcnow().isoformat()
             
-            # Simulate task processing
             task_data = tasks[task_id]
             task_type = task_data.get('type', 'default')
             payload = task_data.get('payload', {})
             
-            print(f"Processing task {task_id}: {task_type}", file=sys.stderr)
+            logger.info(f"Processing task {task_id}: {task_type}")
             
             # Execute task based on type
             result = execute_task(task_type, payload)
@@ -74,12 +161,12 @@ def task_worker():
                 stats['tasks_completed'] += 1
                 stats['tasks_pending'] -= 1
             
-            print(f"Task {task_id} completed", file=sys.stderr)
+            logger.info(f"Task {task_id} completed")
             
         except queue.Empty:
             continue
         except Exception as e:
-            print(f"Task error: {e}", file=sys.stderr)
+            logger.error(f"Task error: {e}")
             with task_lock:
                 if task_id in tasks:
                     tasks[task_id]['status'] = 'failed'
@@ -89,7 +176,15 @@ def task_worker():
 
 def execute_task(task_type, payload):
     """Execute different types of tasks"""
-    if task_type == 'compute':
+    if task_type == 'code':
+        # Code execution task
+        language = payload.get('language', 'python')
+        code = payload.get('code', '')
+        input_data = payload.get('input')
+        
+        return execute_code(language, code, input_data)
+    
+    elif task_type == 'compute':
         # Simple computation task
         operation = payload.get('operation', 'add')
         numbers = payload.get('numbers', [1, 2, 3])
@@ -109,20 +204,27 @@ def execute_task(task_type, payload):
             return {'result': result}
     
     elif task_type == 'sleep':
-        # Sleep task for testing
         duration = payload.get('duration', 1)
         time.sleep(duration)
         return {'slept': duration}
     
     elif task_type == 'echo':
-        # Echo task
         return {'echo': payload.get('message', 'hello')}
     
     return {'result': 'unknown task type'}
 
-# Start worker thread
+def metrics_collector():
+    """Collect metrics periodically"""
+    while True:
+        time.sleep(10)
+        monitor.collect_metrics()
+
+# Start threads
 worker_thread = threading.Thread(target=task_worker, daemon=True)
 worker_thread.start()
+
+metrics_thread = threading.Thread(target=metrics_collector, daemon=True)
+metrics_thread.start()
 
 # Routes
 @app.route('/')
@@ -130,9 +232,10 @@ def root():
     return jsonify({
         'service': 'lightweight-ai-worker',
         'status': 'running',
-        'version': '2.0.0',
-        'features': ['task-scheduling', 'distributed-computing'],
-        'endpoints': ['/', '/health', '/ping', '/tasks', '/tasks/<id>', '/stats']
+        'version': '2.1.0',
+        'features': ['task-scheduling', 'distributed-computing', 'code-execution'],
+        'supported_languages': ['python', 'javascript', 'bash'],
+        'endpoints': ['/', '/health', '/ping', '/tasks', '/tasks/<id>', '/stats', '/metrics', '/logs']
     })
 
 @app.route('/health')
@@ -140,7 +243,7 @@ def health():
     return jsonify({
         'status': 'healthy',
         'service': 'lightweight-ai-worker',
-        'version': '2.0.0'
+        'version': '2.1.0'
     })
 
 @app.route('/ping')
@@ -166,8 +269,7 @@ def create_task():
         stats['tasks_pending'] += 1
     
     task_queue.put(task_id)
-    
-    print(f"Task created: {task_id}", file=sys.stderr)
+    logger.info(f"Task created: {task_id}")
     
     return jsonify({
         'id': task_id,
@@ -192,10 +294,7 @@ def list_tasks():
     with task_lock:
         task_list = list(tasks.values())
     
-    # Sort by created_at, newest first
     task_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-    
-    # Limit to last 100 tasks
     return jsonify({
         'tasks': task_list[:100],
         'total': len(task_list)
@@ -208,9 +307,7 @@ def get_stats():
         current_stats = stats.copy()
         current_stats['total_tasks'] = len(tasks)
     
-    # Add monitoring data
     current_stats['monitoring'] = monitor.get_summary()
-    
     return jsonify(current_stats)
 
 @app.route('/metrics', methods=['GET'])
@@ -234,6 +331,6 @@ def get_logs():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8080))
-    print(f"Starting Flask on 0.0.0.0:{port}", file=sys.stderr)
-    print(f"Task worker ready", file=sys.stderr)
+    logger.info(f"Starting Flask on 0.0.0.0:{port}")
+    logger.info("Code execution support: Python, JavaScript, Bash")
     app.run(host='0.0.0.0', port=port, debug=False)
