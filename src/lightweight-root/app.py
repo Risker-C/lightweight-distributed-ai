@@ -15,7 +15,7 @@ from datetime import datetime
 from monitoring import Monitor, Logger
 
 print("=" * 50, file=sys.stderr)
-print("Starting Lightweight AI Worker v2.1 - Code Execution", file=sys.stderr)
+print("Starting Lightweight AI Worker v2.2 - Code Execution", file=sys.stderr)
 print("=" * 50, file=sys.stderr)
 
 app = Flask(__name__)
@@ -232,7 +232,7 @@ def root():
     return jsonify({
         'service': 'lightweight-ai-worker',
         'status': 'running',
-        'version': '2.1.0',
+        'version': '2.2.0',
         'features': ['task-scheduling', 'distributed-computing', 'code-execution'],
         'supported_languages': ['python', 'javascript', 'bash'],
         'endpoints': ['/', '/health', '/ping', '/tasks', '/tasks/<id>', '/stats', '/metrics', '/logs']
@@ -243,7 +243,7 @@ def health():
     return jsonify({
         'status': 'healthy',
         'service': 'lightweight-ai-worker',
-        'version': '2.1.0'
+        'version': '2.2.0'
     })
 
 @app.route('/ping')

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Monitoring and Logging Module
+Enhanced Monitoring Module - Tracks Main Process + Child Processes
+Version 2.2 - Improved to capture all resource usage including subprocesses
 """
 import time
 import psutil
@@ -9,26 +10,64 @@ from datetime import datetime
 from collections import deque
 
 class Monitor:
-    """System monitoring"""
+    """Monitor main process and all child processes"""
     def __init__(self, max_history=100):
         self.max_history = max_history
         self.metrics_history = deque(maxlen=max_history)
         self.start_time = time.time()
         self.process = psutil.Process(os.getpid())
     
-    def collect_metrics(self):
-        """Collect current system metrics"""
+    def get_all_processes(self):
+        """Get main process and all children"""
+        processes = [self.process]
         try:
-            cpu_percent = self.process.cpu_percent(interval=0.1)
-            memory_info = self.process.memory_info()
-            memory_mb = memory_info.rss / 1024 / 1024
+            children = self.process.children(recursive=True)
+            processes.extend(children)
+        except psutil.NoSuchProcess:
+            pass
+        return processes
+    
+    def collect_metrics(self):
+        """Collect metrics from all processes (main + children)"""
+        try:
+            processes = self.get_all_processes()
+            
+            # Aggregate metrics from all processes
+            total_cpu = 0
+            total_memory = 0
+            total_threads = 0
+            child_count = len(processes) - 1
+            
+            proc_details = []
+            
+            for proc in processes:
+                try:
+                    cpu = proc.cpu_percent(interval=0.1)
+                    memory = proc.memory_info().rss / 1024 / 1024
+                    threads = proc.num_threads()
+                    
+                    total_cpu += cpu
+                    total_memory += memory
+                    total_threads += threads
+                    
+                    proc_details.append({
+                        'pid': proc.pid,
+                        'parent_pid': proc.ppid(),
+                        'cpu_percent': round(cpu, 2),
+                        'memory_mb': round(memory, 2),
+                        'threads': threads
+                    })
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
             
             metrics = {
                 'timestamp': datetime.utcnow().isoformat(),
-                'cpu_percent': round(cpu_percent, 2),
-                'memory_mb': round(memory_mb, 2),
-                'uptime_seconds': int(time.time() - self.start_time),
-                'threads': self.process.num_threads()
+                'cpu_percent': round(total_cpu, 2),
+                'memory_mb': round(total_memory, 2),
+                'threads': total_threads,
+                'child_processes': child_count,
+                'process_details': proc_details[:10],  # Limit to top 10
+                'uptime_seconds': int(time.time() - self.start_time)
             }
             
             self.metrics_history.append(metrics)
@@ -53,6 +92,7 @@ class Monitor:
         
         cpu_values = [m['cpu_percent'] for m in self.metrics_history if 'cpu_percent' in m]
         mem_values = [m['memory_mb'] for m in self.metrics_history if 'memory_mb' in m]
+        child_counts = [m['child_processes'] for m in self.metrics_history if 'child_processes' in m]
         
         return {
             'uptime_seconds': int(time.time() - self.start_time),
@@ -65,6 +105,10 @@ class Monitor:
                 'current_mb': mem_values[-1] if mem_values else 0,
                 'avg_mb': round(sum(mem_values) / len(mem_values), 2) if mem_values else 0,
                 'max_mb': max(mem_values) if mem_values else 0
+            },
+            'child_processes': {
+                'current': child_counts[-1] if child_counts else 0,
+                'max': max(child_counts) if child_counts else 0
             },
             'samples': len(self.metrics_history)
         }

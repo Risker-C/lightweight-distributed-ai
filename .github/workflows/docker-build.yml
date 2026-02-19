@@ -38,9 +38,10 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v2.2
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "Image pushed successfully to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        run: echo "Image pushed to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v2.0"
