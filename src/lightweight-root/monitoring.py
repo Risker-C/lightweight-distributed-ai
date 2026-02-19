@@ -32,6 +32,9 @@ class Monitor:
         try:
             processes = self.get_all_processes()
             
+            # DEBUG: Log process count
+            print(f"[MONITOR DEBUG] Found {len(processes)} total processes (1 main + {len(processes)-1} children)", flush=True)
+            
             # Aggregate metrics from all processes
             total_cpu = 0
             total_memory = 0
@@ -46,6 +49,9 @@ class Monitor:
                     memory = proc.memory_info().rss / 1024 / 1024
                     threads = proc.num_threads()
                     
+                    # DEBUG: Log each process
+                    print(f"[MONITOR DEBUG] PID {proc.pid}: CPU={cpu:.2f}%, Memory={memory:.2f}MB, Threads={threads}", flush=True)
+                    
                     total_cpu += cpu
                     total_memory += memory
                     total_threads += threads
@@ -57,8 +63,11 @@ class Monitor:
                         'memory_mb': round(memory, 2),
                         'threads': threads
                     })
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
+                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                    print(f"[MONITOR DEBUG] Error accessing process: {e}", flush=True)
+            
+            # DEBUG: Log aggregated metrics
+            print(f"[MONITOR DEBUG] Total: CPU={total_cpu:.2f}%, Memory={total_memory:.2f}MB, Children={child_count}", flush=True)
             
             metrics = {
                 'timestamp': datetime.utcnow().isoformat(),
@@ -73,6 +82,7 @@ class Monitor:
             self.metrics_history.append(metrics)
             return metrics
         except Exception as e:
+            print(f"[MONITOR ERROR] collect_metrics failed: {e}", flush=True)
             return {'error': str(e)}
     
     def get_metrics(self):

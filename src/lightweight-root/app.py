@@ -62,6 +62,9 @@ def execute_python(code, input_data=None):
         if input_data:
             env['INPUT_DATA'] = str(input_data)
         
+        print(f"[EXEC DEBUG] Starting subprocess to execute Python code", flush=True)
+        start_time = time.time()
+        
         result = subprocess.run(
             ['python3', temp_file],
             capture_output=True,
@@ -69,6 +72,9 @@ def execute_python(code, input_data=None):
             timeout=30,
             env=env
         )
+        
+        elapsed = time.time() - start_time
+        print(f"[EXEC DEBUG] Subprocess completed in {elapsed:.2f}s, returncode={result.returncode}", flush=True)
         
         return {
             'stdout': result.stdout,
