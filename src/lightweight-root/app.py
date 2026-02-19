@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Flask app with task scheduling and distributed computing
+Enhanced Flask app with task scheduling, distributed computing, and monitoring
 """
 from flask import Flask, jsonify, request
 import os
@@ -10,12 +10,17 @@ import threading
 import queue
 import uuid
 from datetime import datetime
+from monitoring import Monitor, Logger
 
 print("=" * 50, file=sys.stderr)
 print("Starting Lightweight AI Worker v2.0", file=sys.stderr)
 print("=" * 50, file=sys.stderr)
 
 app = Flask(__name__)
+
+# Initialize monitoring and logging
+monitor = Monitor()
+logger = Logger('worker')
 
 # Task queue and storage
 task_queue = queue.Queue()
@@ -29,6 +34,16 @@ stats = {
     'tasks_failed': 0,
     'tasks_pending': 0
 }
+
+def metrics_collector():
+    """Collect metrics periodically"""
+    while True:
+        time.sleep(10)  # Collect every 10 seconds
+        monitor.collect_metrics()
+
+# Start metrics collector
+metrics_thread = threading.Thread(target=metrics_collector, daemon=True)
+metrics_thread.start()
 
 def task_worker():
     """Background worker to process tasks"""
@@ -193,7 +208,29 @@ def get_stats():
         current_stats = stats.copy()
         current_stats['total_tasks'] = len(tasks)
     
+    # Add monitoring data
+    current_stats['monitoring'] = monitor.get_summary()
+    
     return jsonify(current_stats)
+
+@app.route('/metrics', methods=['GET'])
+def get_metrics():
+    """Get detailed metrics"""
+    limit = request.args.get('limit', 100, type=int)
+    return jsonify({
+        'current': monitor.get_metrics(),
+        'history': monitor.get_history(limit),
+        'summary': monitor.get_summary()
+    })
+
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    """Get application logs"""
+    level = request.args.get('level')
+    limit = request.args.get('limit', 100, type=int)
+    return jsonify({
+        'logs': logger.get_logs(level, limit)
+    })
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8080))
