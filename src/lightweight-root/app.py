@@ -239,7 +239,7 @@ def root():
     return jsonify({
         'service': 'lightweight-ai-worker',
         'status': 'running',
-        'version': '2.2.0',
+        'version': VERSION,
         'features': ['task-scheduling', 'distributed-computing', 'code-execution'],
         'supported_languages': ['python', 'javascript', 'bash'],
         'endpoints': ['/', '/health', '/ping', '/tasks', '/tasks/<id>', '/stats', '/metrics', '/logs']
@@ -250,7 +250,7 @@ def health():
     return jsonify({
         'status': 'healthy',
         'service': 'lightweight-ai-worker',
-        'version': '2.2.0'
+        'version': VERSION
     })
 
 @app.route('/ping')
